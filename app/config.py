@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 
 def safe_float(env_value, default):
@@ -23,7 +24,8 @@ REQUEST_TIMEOUT = safe_float(os.environ.get("REQUEST_TIMEOUT"), 15.0)
 CHECK_INTERVAL_MINUTES = _safe_int(
     os.environ.get("CHECK_INTERVAL_MINUTES"), 180)
 
-SUBSCRIPTIONS_PATH = os.environ.get("SUBSCRIPTIONS_PATH", "subscriptions.json")
+SUBSCRIPTIONS_PATH = Path(os.environ.get(
+    "SUBSCRIPTIONS_PATH", "/app/data/subscriptions.json"))
 
 USER_AGENT = os.environ.get(
     "USER_AGENT",
