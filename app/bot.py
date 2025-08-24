@@ -43,10 +43,9 @@ def _esc(s: str) -> str:
 
 
 async def reply_availability(update: Update, result) -> None:
-    title = f"*{result.title}*\n" if result.title else ""
-    await update.message.reply_markdown_v2(
-        f"{_esc(title)}*Status:* `{_esc(result.status)}`\n"
-        f"*URL:* {_esc(result.url)}"
+    title = f"<b>{result.title}</b>\n" if result.title else ""
+    await update.message.reply_html(
+        f"{title}<b>Status:</b> {result.status}\n<b>URL:</b> {result.url}"
     )
 
 
@@ -56,7 +55,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Commands:\n"
         "• /check <url>\n"
         "• /check <url> | <css selector>\n"
-        "• /watch <url> — keep checking periodically\n"
         "• /list — show your watched URLs\n"
         "• /unwatch <url> — stop watching a URL"
     )
@@ -76,15 +74,6 @@ async def cmd_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Save subscription (persisted file with guard)
     await storage.add(update.effective_user.id, url, result.status, css)
     await update.message.reply_text("Saved ✅ I’ll keep checking this link periodically.")
-
-
-async def cmd_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not context.args:
-        await update.message.reply_text("Usage: /watch <url>")
-        return
-    url = context.args[0].strip()
-    await storage.add(update.effective_user.id, url)
-    await update.message.reply_text(f"Saved ✅ I’ll keep checking this link: {url}")
 
 
 async def cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -122,7 +111,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.chat.send_action("typing")
     result = check_availability(url, css_selector=None)
     await reply_availability(update, result)
-    await update.message.reply_text("Tip: use /check <url> or /watch <url> to monitor it periodically.")
+    await update.message.reply_text("Tip: use /check <url> to monitor it periodically.")
 
 
 async def periodic_check(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -158,7 +147,6 @@ def run() -> None:
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("check", cmd_check))
-    app.add_handler(CommandHandler("watch", cmd_watch))
     app.add_handler(CommandHandler("list", cmd_list))
     app.add_handler(CommandHandler("unwatch", cmd_unwatch))
     app.add_handler(MessageHandler(

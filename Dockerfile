@@ -16,4 +16,4 @@ COPY app ./app
 RUN useradd -ms /bin/bash appuser
 USER appuser
 
-CMD ["python", "-m", "app.bot"]
+CMD ["python", "-m", "app"]
