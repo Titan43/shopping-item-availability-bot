@@ -1,21 +1,14 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import re
+import time
 from typing import Optional, Tuple
 
-import cloudscraper
+import undetected_chromedriver as uc
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 
 from .config import REQUEST_TIMEOUT, USER_AGENT
-
-HEADERS = {
-    "User-Agent": USER_AGENT,
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
-    "Referer": "",
-}
 
 AVAILABILITY_KEYWORDS = {
     "available": [
@@ -39,12 +32,36 @@ class CheckResult:
     url: Optional[str] = None
 
 
+def _make_driver() -> uc.Chrome:
+    """Create undetected Chrome driver for Docker."""
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument(f"user-agent={USER_AGENT}")
+    chrome_options.add_argument(
+        "--disable-blink-features=AutomationControlled")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
+
+    driver = uc.Chrome(options=chrome_options)
+    return driver
+
+
 def fetch_html(url: str) -> Tuple[str, str]:
-    scraper = cloudscraper.create_scraper()
-    resp = scraper.get(url, headers=HEADERS,
-                       timeout=REQUEST_TIMEOUT, allow_redirects=True)
-    resp.raise_for_status()
-    return resp.url, resp.text
+    driver = _make_driver()
+    try:
+        driver.set_page_load_timeout(REQUEST_TIMEOUT)
+        driver.get(url)
+
+        # Give JS time to render (adjust if needed)
+        time.sleep(3)
+
+        final_url = driver.current_url
+        html = driver.page_source
+        return final_url, html
+    finally:
+        driver.quit()
 
 
 def normalize_text(t: str) -> str:
@@ -68,7 +85,7 @@ def check_availability(url: str, css_selector: Optional[str] = None) -> CheckRes
     except Exception as e:
         return CheckResult(status="UNKNOWN", reason=f"Request failed: {e}", url=url)
 
-    soup = BeautifulSoup(html, "html5lib")
+    soup = BeautifulSoup(html, "html.parser")
     page_text = soup.get_text(separator=" ", strip=True)
 
     if css_selector:
@@ -105,6 +122,7 @@ def check_availability(url: str, css_selector: Optional[str] = None) -> CheckRes
             url=final_url,
         )
 
+    # Heuristic: check for buttons
     button_texts = [
         "add to cart", "buy now", "в кошик", "у кошик", "купити", "в корзину",
         "додати до кошика", "додати в кошик", "dodaj do koszyka", "kup teraz"
