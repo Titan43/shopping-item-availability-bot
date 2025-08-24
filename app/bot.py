@@ -44,8 +44,9 @@ def _esc(s: str) -> str:
 
 async def reply_availability(update: Update, result) -> None:
     title = f"<b>{result.title}</b>\n" if result.title else ""
+    reason = f"<b>Reason:</b> {result.reason}\n" if result.reason else ""
     await update.message.reply_html(
-        f"{title}<b>Status:</b> {result.status}\n<b>URL:</b> {result.url}"
+        f"{title}<b>Status:</b> {result.status}\n{reason}<b>URL:</b> {result.url}"
     )
 
 
@@ -81,10 +82,13 @@ async def cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not entries:
         await update.message.reply_text("You aren't watching any URLs yet.")
         return
-    lines = [
-        f"{i+1}. {e['url']} (last: {e.get('last_status','UNKNOWN')})"
-        for i, e in enumerate(entries)
-    ]
+
+    lines = []
+    for i, e in enumerate(entries):
+        css_info = f" | selector: {e['css']}" if e.get("css") else ""
+        last_status = e.get("last_status", "UNKNOWN")
+        lines.append(f"{i+1}. {e['url']} (last: {last_status}){css_info}")
+
     await update.message.reply_text("Your watchlist:\n" + "\n".join(lines))
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import re
 from typing import Optional, Tuple
 
 import cloudscraper
@@ -46,13 +47,17 @@ def fetch_html(url: str) -> Tuple[str, str]:
     return resp.url, resp.text
 
 
+def normalize_text(t: str) -> str:
+    return re.sub(r'[\"\']', '', t).strip().lower()
+
+
 def check_keywords(text: str) -> Optional[Tuple[str, str]]:
-    lower = text.lower()
+    norm = normalize_text(text)
     for kw in AVAILABILITY_KEYWORDS["unavailable"]:
-        if kw.lower() in lower:
+        if kw.lower() in norm:
             return "OUT_OF_STOCK", f"Matched keyword: {kw}"
     for kw in AVAILABILITY_KEYWORDS["available"]:
-        if kw.lower() in lower:
+        if kw.lower() in norm:
             return "AVAILABLE", f"Matched keyword: {kw}"
     return None
 
@@ -71,22 +76,17 @@ def check_availability(url: str, css_selector: Optional[str] = None) -> CheckRes
             nodes = soup.select(css_selector)
             if not nodes:
                 return CheckResult(
-                    status="UNKNOWN",
+                    status="OUT_OF_STOCK",
                     reason=f"CSS selector '{css_selector}' matched nothing.",
                     title=soup.title.string.strip() if soup.title else None,
                     url=final_url,
                 )
-            zone_text = " ".join(n.get_text(
-                separator=" ", strip=True) for n in nodes)
-            kw = check_keywords(zone_text)
-            if kw:
-                status, evidence = kw
-                return CheckResult(
-                    status=status,
-                    reason=f"{evidence} (inside selector: {css_selector})",
-                    title=soup.title.string.strip() if soup.title else None,
-                    url=final_url,
-                )
+            return CheckResult(
+                status="AVAILABLE",
+                reason=f"Selector '{css_selector}' matched {len(nodes)} node(s).",
+                title=soup.title.string.strip() if soup.title else None,
+                url=final_url,
+            )
         except Exception as e:
             return CheckResult(
                 status="UNKNOWN",
