@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import re
+import random
 import time
 from typing import Optional, Tuple
 
@@ -8,7 +9,7 @@ import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 
-from .config import REQUEST_TIMEOUT, USER_AGENT
+from .config import REQUEST_TIMEOUT, USER_AGENTS
 
 AVAILABILITY_KEYWORDS = {
     "available": [
@@ -38,11 +39,13 @@ def _make_driver() -> uc.Chrome:
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument(f"user-agent={USER_AGENT}")
+    chrome_options.add_argument(f"--user-agent={random.choice(USER_AGENTS)}")
     chrome_options.add_argument(
         "--disable-blink-features=AutomationControlled")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--enable-javascript")
+    chrome_options.add_argument("--lang=uk-UA,uk")
 
     driver = uc.Chrome(options=chrome_options)
     return driver
@@ -55,7 +58,7 @@ def fetch_html(url: str) -> Tuple[str, str]:
         driver.get(url)
 
         # Give JS time to render (adjust if needed)
-        time.sleep(3)
+        time.sleep(6)
 
         final_url = driver.current_url
         html = driver.page_source
